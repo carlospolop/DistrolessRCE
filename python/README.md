@@ -82,8 +82,16 @@ def find_executables(path):
 ### Read file
 
 ```python
+def read_fileb(path):
+    with open(path, "rb") as f:
+        return f.read()
+```
+
+### Read file in base64
+
+```python
 import base64
-def read_file(path):
+def read_fileb64(path):
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode()
 ```
@@ -107,14 +115,14 @@ def http_req(url):
 ### Download and write file
 
 ```python
-def dowrite(url):
+def download(url):
     from urllib import request
     r = request.urlopen(url)
     fname = url.split("/")[-1]
     print(f"Writting in {fname}")
     with open(f"/tmp/{fname}", "wb") as f:
         f.write(r.read())
-# dowrite("http://172.17.0.3:8989/usr/lib/aarch64-linux-gnu/libpcre2-8.so.0")
+# download("http://172.17.0.3:8989/usr/lib/aarch64-linux-gnu/libpcre2-8.so.0")
 ```
 
 ### Get writable folders
