@@ -88,7 +88,7 @@ function read_file(path){
 }
 ```
 
-### Read file in abse64
+### Read file in base64
 ```js
 fs = require('fs');
 function read_fileb64(path){

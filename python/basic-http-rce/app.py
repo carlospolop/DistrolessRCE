@@ -25,7 +25,7 @@ class S(SimpleHTTPRequestHandler):
         self.wfile.write(bytes(out, encoding='utf-8'))
         return
 
-def run(server_class=HTTPServer, handler_class=S, port=8080):
+def run(server_class=HTTPServer, handler_class=S, port=3001):
     server_address = ('', port)
     httpd = server_class(server_address, handler_class)
     try:

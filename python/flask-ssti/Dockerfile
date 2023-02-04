@@ -27,4 +27,4 @@ ENV PYTHONPATH /app/site-packages
 COPY . .
 
 EXPOSE 8080
-ENTRYPOINT ["python", "app.py"]
+ENTRYPOINT ["/usr/bin/python", "app.py"]

