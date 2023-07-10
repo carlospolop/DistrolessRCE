@@ -55,6 +55,23 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
+  name: php-pod
+spec:
+  securityContext:
+    runAsUser: 1000
+  containers:
+  - name: php-container
+    image: cgr.dev/chainguard/php
+    securityContext:
+      runAsUser: 1000
+      readOnlyRootFilesystem: true
+  restartPolicy: OnFailure
+
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
   name: ubuntu
 spec:
   containers:
