@@ -59,7 +59,7 @@ spec:
   containers:
   - name: php-container
     image: cgr.dev/chainguard/php
-    command: ["php", "-a"]
+    command: ["php", "-r", "while (true) { sleep(100); }"]
     securityContext:
       runAsUser: 1000
       readOnlyRootFilesystem: true
