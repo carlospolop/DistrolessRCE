@@ -59,6 +59,7 @@ spec:
   containers:
   - name: php-container
     image: cgr.dev/chainguard/php
+    command: ["php", "-a"]
     securityContext:
       runAsUser: 1000
       readOnlyRootFilesystem: true
