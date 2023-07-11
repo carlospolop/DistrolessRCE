@@ -7,8 +7,7 @@ spec:
     runAsUser: 1000
   containers:
   - name: dless-express-pp-pod
-    image: dless-express-pp
-    imagePullPolicy: Never
+    image: docker.io/carlospolop/dless-express-pp
     securityContext:
       runAsUser: 1000
       readOnlyRootFilesystem: true
@@ -25,8 +24,7 @@ spec:
     runAsUser: 1000
   containers:
   - name: dless-python-rce-pod
-    image: dless-python-rce
-    imagePullPolicy: Never
+    image: docker.io/carlospolop/dless-python-rce
     securityContext:
       runAsUser: 1000
       readOnlyRootFilesystem: true
@@ -43,8 +41,7 @@ spec:
     runAsUser: 1000
   containers:
   - name: dless-flask-ssti-pod
-    image: dless-flask-ssti
-    imagePullPolicy: Never
+    image: docker.io/carlospolop/dless-flask-ssti
     securityContext:
       runAsUser: 1000
       readOnlyRootFilesystem: true
